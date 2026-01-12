@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting → CR</title>
+    <title>Meeting Transcriber - Tribe Azure</title>
+    <link rel="icon" type="image/png" href="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png">
     <link rel="stylesheet" href="styles.css">
     <script src="config.js"></script>
     <script src="prompts.js"></script>
@@ -32,7 +33,7 @@
                 <div class="supported-formats">
                     Formats supportés : .m4a, .mp3, .wav, .ogg, .flac
                     <br />
-                    (durée limitée à une réunion de 1h)
+                    (durée du fichier limitée à une réunion de 1 heure environ)
                 </div>
                 <div class="file-info" id="fileInfoAudio"></div>
                 <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.flac,.webm" style="display: none;" />
@@ -68,7 +69,7 @@
                 </div>
             </div>
 
-            <div class="or-separator">⬇️ ou collez directement une transcription ⬇️</div>
+            <div class="or-separator">⬇️ ou collez directement une transcription texte pour la convertir en compte-rendu ⬇️</div>
 
             <!-- Zone de texte -->
             <div class="text-input-zone">
@@ -100,7 +101,11 @@
         </div>
 
         <div class="footer">
-            Meeting Transcriber • Azure Speech + Claude API • Contact : <a href="mailto:thibault.gibard@devoteam.com">thibault.gibard@devoteam.com</a> 📧
+            Devoteam M Cloud - Tribe Azure - Meeting Transcriber 🤖
+            <br />
+            Azure Speech + Claude API / OpenAI API
+            <br />
+            Contact : <a href="mailto:thibault.gibard@devoteam.com">thibault.gibard@devoteam.com</a> 📧
         </div>
     </div>
 
@@ -458,11 +463,47 @@
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `Erreur API (${response.status})`);
+                throw new Error(errorData.error?.message || `Erreur API Claude (${response.status})`);
             }
 
             const data = await response.json();
             return data.content[0].text;
+        }
+
+        // OpenAI API - Génération CR
+        async function callOpenAI(transcription) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CONFIG.OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: CONFIG.OPENAI_MODEL || 'gpt-4o',
+                    max_tokens: 4096,
+                    messages: [
+                        { role: 'system', content: CLAUDE_SYSTEM_PROMPT },
+                        { role: 'user', content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}` }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `Erreur API OpenAI (${response.status})`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // Dispatcher - choisit le provider selon config
+        async function generateCR(transcription) {
+            if (CONFIG.LLM_PROVIDER === 'openai') {
+                return await callOpenAI(transcription);
+            } else {
+                return await callClaudeAPI(transcription);
+            }
         }
 
         btnGenerate.addEventListener('click', async function() {
@@ -475,7 +516,7 @@
             btnGenerate.disabled = true;
 
             try {
-                const cr = await callClaudeAPI(text);
+                const cr = await generateCR(text);
                 resultContent.innerHTML = marked.parse(cr);
                 resultZone.classList.add('visible');
             } catch (error) {
