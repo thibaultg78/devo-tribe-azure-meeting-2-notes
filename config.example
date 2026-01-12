@@ -2,5 +2,8 @@
 const CONFIG = {
     ANTHROPIC_API_KEY: 'votre-cle-anthropic',
     AZURE_SPEECH_KEY: 'votre-cle-azure-speech',
-    AZURE_SPEECH_REGION: 'francecentral'
+    AZURE_SPEECH_REGION: 'francecentral',
+    AZURE_STORAGE_ACCOUNT: 'votre-storage-account',
+    AZURE_STORAGE_KEY: 'votre-cle-storage',
+    AZURE_STORAGE_CONTAINER: 'audio-uploads'
 };

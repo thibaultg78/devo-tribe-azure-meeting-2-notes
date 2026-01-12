@@ -4,421 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meeting → CR</title>
+    <link rel="stylesheet" href="styles.css">
     <script src="config.js"></script>
+    <script src="prompts.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f7f7f7;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #6b7280, #4b5563);
-            color: white;
-            padding: 25px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-        }
-
-        .header p {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            margin-top: 5px;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        /* Zone d'upload */
-        .upload-zone {
-            border: 2px dashed #d1d5db;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            background: #fafafa;
-        }
-
-        .upload-zone:hover,
-        .upload-zone.dragover {
-            border-color: #6b7280;
-            background: #f0f0f0;
-        }
-
-        .upload-zone.has-file {
-            border-color: #10b981;
-            background: #ecfdf5;
-        }
-
-        .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-        }
-
-        .upload-text {
-            color: #6b7280;
-            font-size: 1rem;
-        }
-
-        .upload-text strong {
-            color: #374151;
-        }
-
-        .file-info {
-            margin-top: 15px;
-            padding: 10px 15px;
-            background: white;
-            border-radius: 8px;
-            display: none;
-            font-size: 0.9rem;
-            color: #065f46;
-        }
-
-        .upload-zone.has-file .file-info {
-            display: block;
-        }
-
-        .upload-zone-small {
-            padding: 20px;
-        }
-
-        .upload-zone-small .upload-icon {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-        }
-
-        /* Bouton transcrire */
-        .btn-transcribe {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #0078d4, #106ebe);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 15px;
-            margin-bottom: 10px;
-        }
-
-        .btn-transcribe:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
-        }
-
-        .btn-transcribe:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Zone de texte direct */
-        .or-separator {
-            text-align: center;
-            margin: 20px 0;
-            color: #9ca3af;
-            font-size: 0.85rem;
-        }
-
-        .text-input-zone {
-            margin-bottom: 20px;
-        }
-
-        .text-input-zone textarea {
-            width: 100%;
-            min-height: 150px;
-            padding: 15px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.95rem;
-            resize: vertical;
-            transition: border-color 0.2s;
-        }
-
-        .text-input-zone textarea:focus {
-            outline: none;
-            border-color: #6b7280;
-        }
-
-        .text-input-zone textarea::placeholder {
-            color: #9ca3af;
-        }
-
-        /* Bouton générer */
-        .btn-generate {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #6b7280, #4b5563);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 20px;
-        }
-
-        .btn-generate:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-generate:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Zone de résultat */
-        .result-zone {
-            margin-top: 30px;
-            display: none;
-        }
-
-        .result-zone.visible {
-            display: block;
-        }
-
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .result-header h2 {
-            font-size: 1.1rem;
-            color: #374151;
-        }
-
-        .btn-copy {
-            padding: 8px 16px;
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-copy:hover {
-            background: #e5e7eb;
-        }
-
-        .btn-copy.copied {
-            background: #d1fae5;
-            border-color: #10b981;
-            color: #065f46;
-        }
-
-        .result-content {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 20px;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .result-content h1, .result-content h2, .result-content h3 {
-            margin-top: 1em;
-            margin-bottom: 0.5em;
-            color: #1f2937;
-        }
-
-        .result-content h1 { font-size: 1.4rem; }
-        .result-content h2 { font-size: 1.2rem; }
-        .result-content h3 { font-size: 1.05rem; }
-
-        .result-content ul, .result-content ol {
-            margin: 0.5em 0;
-            padding-left: 1.5em;
-        }
-
-        .result-content li {
-            margin: 0.3em 0;
-        }
-
-        .result-content p {
-            margin: 0.5em 0;
-        }
-
-        .result-content strong {
-            color: #374151;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 30px;
-            display: none;
-        }
-
-        .loading.visible {
-            display: block;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #6b7280;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: #6b7280;
-        }
-
-        /* Erreur */
-        .error-zone {
-            background: #fee2e2;
-            border: 1px solid #fecaca;
-            border-radius: 8px;
-            padding: 15px;
-            color: #dc2626;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .error-zone.visible {
-            display: block;
-        }
-
-        /* Config API */
-        .api-config {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .api-config label {
-            display: block;
-            font-size: 0.85rem;
-            color: #92400e;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .api-config input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #fde68a;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .api-config input:focus {
-            outline: none;
-            border-color: #f59e0b;
-        }
-
-        .api-config small {
-            display: block;
-            margin-top: 8px;
-            color: #b45309;
-            font-size: 0.8rem;
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 15px;
-            background: #f8fafc;
-            border-top: 1px solid #e5e7eb;
-            font-size: 0.8rem;
-            color: #9ca3af;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📝 Meeting → Compte-Rendu</h1>
-            <p>Transformez vos transcriptions en CR structurés</p>
+            <div class="header-content">
+                <img src="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png" 
+                     alt="Devoteam" class="header-logo">
+                <div class="header-text">
+                    <h1>Tribe Azure ☁️ - Meeting Transcriber 📝</h1>
+                    <p>Transformez vos réunions en CR structurés</p>
+                </div>
+            </div>
         </div>
 
         <div class="content">
-            <!-- Configuration API -->
-            <div class="api-config">
-                <label for="apiKey">🔑 Clé API Claude (Anthropic)</label>
-                <input type="password" id="apiKey" placeholder="sk-ant-api03-..." />
-                <small>La clé reste dans votre navigateur et n'est jamais stockée sur un serveur.</small>
-            </div>
-
             <!-- Zone d'upload AUDIO -->
             <div class="upload-zone" id="uploadZoneAudio">
                 <div class="upload-icon">🎙️</div>
                 <div class="upload-text">
-                    <strong>Glissez un fichier audio</strong> (.wav, .mp3, .m4a) ou cliquez pour sélectionner
+                    <strong>Glissez un fichier audio</strong> ou cliquez pour sélectionner
+                </div>
+                <div class="supported-formats">
+                    Formats supportés : .m4a, .mp3, .wav, .ogg, .flac
+                    <br />
+                    (durée limitée à une réunion de 1h)
                 </div>
                 <div class="file-info" id="fileInfoAudio"></div>
-                <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.webm" style="display: none;" />
+                <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.flac,.webm" style="display: none;" />
             </div>
 
             <!-- Bouton transcrire -->
             <button class="btn-transcribe" id="btnTranscribe" disabled>
-                🎙️ Transcrire l'audio (Azure Speech)
+                🎙️ Transcrire l'audio en texte
             </button>
 
-            <!-- Loading transcription -->
-            <div class="loading" id="loadingTranscription">
-                <div class="spinner"></div>
-                <div class="loading-text">Azure Speech transcrit l'audio...</div>
-            </div>
-
-            <div class="or-separator">— ou importez une transcription texte —</div>
-
-            <!-- Zone d'upload TEXTE -->
-            <div class="upload-zone upload-zone-small" id="uploadZone">
-                <div class="upload-text">
-                    <strong>📄 Glissez un fichier .txt</strong> ou cliquez
+            <!-- Zone de progression -->
+            <div class="progress-zone" id="progressZone">
+                <div class="progress-header">
+                    <span class="progress-title" id="progressTitle">Transcription en cours...</span>
+                    <span class="progress-status" id="progressStatus"></span>
                 </div>
-                <div class="file-info" id="fileInfo"></div>
-                <input type="file" id="fileInput" accept=".txt" style="display: none;" />
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="progress-details" id="progressDetails">
+                    <div class="progress-step" id="step1">
+                        <span>⏳</span> <span>Upload du fichier audio</span>
+                    </div>
+                    <div class="progress-step" id="step2">
+                        <span>⏳</span> <span>Création du job de transcription</span>
+                    </div>
+                    <div class="progress-step" id="step3">
+                        <span>⏳</span> <span>Transcription en cours</span>
+                    </div>
+                    <div class="progress-step" id="step4">
+                        <span>⏳</span> <span>Récupération du résultat</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="or-separator">— ou collez directement la transcription —</div>
+            <div class="or-separator">⬇️ ou collez directement une transcription ⬇️</div>
 
             <!-- Zone de texte -->
             <div class="text-input-zone">
-                <textarea id="transcriptionText" placeholder="Collez ici le texte de votre transcription..."></textarea>
+                <textarea id="transcriptionText" placeholder="La transcription apparaîtra ici, ou collez votre propre texte..."></textarea>
             </div>
 
             <!-- Bouton générer -->
@@ -446,35 +100,29 @@
         </div>
 
         <div class="footer">
-            POC Meeting Transcriber • Propulsé par Claude API
+            Meeting Transcriber • Azure Speech + Claude API • Contact : <a href="mailto:thibault.gibard@devoteam.com">thibault.gibard@devoteam.com</a> 📧
         </div>
     </div>
 
     <script>
         // Éléments DOM
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
         const uploadZoneAudio = document.getElementById('uploadZoneAudio');
         const fileInputAudio = document.getElementById('fileInputAudio');
         const fileInfoAudio = document.getElementById('fileInfoAudio');
         const btnTranscribe = document.getElementById('btnTranscribe');
-        const loadingTranscription = document.getElementById('loadingTranscription');
+        const progressZone = document.getElementById('progressZone');
+        const progressTitle = document.getElementById('progressTitle');
+        const progressStatus = document.getElementById('progressStatus');
+        const progressBar = document.getElementById('progressBar');
         const transcriptionText = document.getElementById('transcriptionText');
         const btnGenerate = document.getElementById('btnGenerate');
-        const apiKeyInput = document.getElementById('apiKey');
         const loading = document.getElementById('loading');
         const errorZone = document.getElementById('errorZone');
         const resultZone = document.getElementById('resultZone');
         const resultContent = document.getElementById('resultContent');
         const btnCopy = document.getElementById('btnCopy');
 
-        let currentFileContent = '';
         let currentAudioFile = null;
-
-        // Config Azure Speech (depuis config.js)
-        const AZURE_SPEECH_KEY = CONFIG.AZURE_SPEECH_KEY;
-        const AZURE_SPEECH_REGION = CONFIG.AZURE_SPEECH_REGION;
 
         // Gestion de l'upload AUDIO
         uploadZoneAudio.addEventListener('click', () => fileInputAudio.click());
@@ -500,129 +148,22 @@
             if (file) handleAudioFile(file);
         });
 
-        // Traitement du fichier audio
         function handleAudioFile(file) {
-            const validExtensions = ['.wav', '.mp3', '.m4a', '.ogg', '.webm'];
+            const validExtensions = ['.wav', '.mp3', '.m4a', '.ogg', '.flac', '.webm'];
             const ext = '.' + file.name.split('.').pop().toLowerCase();
             
             if (!validExtensions.includes(ext)) {
-                showError('Format audio non supporté. Utilisez .wav, .mp3, .m4a, .ogg ou .webm');
+                showError('Format audio non supporté.');
                 return;
             }
 
             currentAudioFile = file;
             uploadZoneAudio.classList.add('has-file');
-            fileInfoAudio.textContent = `✓ ${file.name} (${formatSize(file.size)})`;
+            
+            const estimatedMinutes = Math.ceil(file.size / (128 * 1024 / 8) / 60);
+            fileInfoAudio.textContent = `✓ ${file.name} (${formatSize(file.size)}) • Durée estimée: ~${estimatedMinutes} min`;
+            
             btnTranscribe.disabled = false;
-        }
-
-        // Transcrire l'audio via Azure Speech
-        btnTranscribe.addEventListener('click', function() {
-            console.log('Bouton cliqué !');
-            transcribeAudio();
-        });
-
-        async function transcribeAudio() {
-            console.log('transcribeAudio() appelé, fichier:', currentAudioFile);
-            if (!currentAudioFile) {
-                console.log('Pas de fichier audio');
-                return;
-            }
-
-            loadingTranscription.classList.add('visible');
-            errorZone.classList.remove('visible');
-            btnTranscribe.disabled = true;
-
-            try {
-                // Convertir le fichier en ArrayBuffer
-                const audioData = await currentAudioFile.arrayBuffer();
-                
-                // Déterminer le content-type
-                const ext = currentAudioFile.name.split('.').pop().toLowerCase();
-                let contentType = 'audio/wav';
-                if (ext === 'mp3') contentType = 'audio/mpeg';
-                else if (ext === 'm4a') contentType = 'audio/mp4';
-                else if (ext === 'ogg') contentType = 'audio/ogg';
-                else if (ext === 'webm') contentType = 'audio/webm';
-
-                // Appel Azure Speech REST API
-                const response = await fetch(
-                    `https://${AZURE_SPEECH_REGION}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=fr-FR`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
-                            'Content-Type': contentType,
-                            'Accept': 'application/json'
-                        },
-                        body: audioData
-                    }
-                );
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Erreur Azure Speech (${response.status}): ${errorText}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.RecognitionStatus === 'Success') {
-                    transcriptionText.value = result.DisplayText;
-                    checkCanGenerate();
-                } else if (result.RecognitionStatus === 'NoMatch') {
-                    throw new Error('Aucune parole détectée dans l\'audio.');
-                } else {
-                    throw new Error(`Échec de la transcription: ${result.RecognitionStatus}`);
-                }
-
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                loadingTranscription.classList.remove('visible');
-                btnTranscribe.disabled = false;
-            }
-        }
-
-        // Gestion de l'upload par drag & drop
-        uploadZone.addEventListener('click', () => fileInput.click());
-        
-        uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        });
-
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
-        });
-
-        // Traitement du fichier
-        function handleFile(file) {
-            if (!file.name.endsWith('.txt')) {
-                showError('Seuls les fichiers .txt sont acceptés pour le moment.');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                currentFileContent = e.target.result;
-                transcriptionText.value = currentFileContent;
-                uploadZone.classList.add('has-file');
-                fileInfo.textContent = `✓ ${file.name} (${formatSize(file.size)})`;
-                checkCanGenerate();
-            };
-            reader.readAsText(file);
         }
 
         function formatSize(bytes) {
@@ -631,33 +172,310 @@
             return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
         }
 
-        // Vérifier si on peut générer
         function checkCanGenerate() {
             const hasText = transcriptionText.value.trim().length > 0;
-            const hasApiKey = apiKeyInput.value.trim().length > 0;
-            btnGenerate.disabled = !(hasText && hasApiKey);
+            btnGenerate.disabled = !hasText;
         }
 
         transcriptionText.addEventListener('input', checkCanGenerate);
-        apiKeyInput.addEventListener('input', checkCanGenerate);
 
-        // Générer le CR
-        btnGenerate.addEventListener('click', generateCR);
+        function updateStep(stepNum, status) {
+            const step = document.getElementById(`step${stepNum}`);
+            const icon = step.querySelector('span:first-child');
+            
+            step.classList.remove('completed', 'active', 'pending');
+            
+            if (status === 'completed') {
+                step.classList.add('completed');
+                icon.textContent = '✅';
+            } else if (status === 'active') {
+                step.classList.add('active');
+                icon.textContent = '🔄';
+            } else {
+                step.classList.add('pending');
+                icon.textContent = '⏳';
+            }
+        }
 
-        async function generateCR() {
+        function resetSteps() {
+            for (let i = 1; i <= 4; i++) {
+                updateStep(i, 'pending');
+            }
+        }
+
+        // Azure Storage - Auth Header
+        async function generateAuthHeader(method, blobName, dateStr, contentLength, contentType) {
+            const canonicalizedHeaders = `x-ms-blob-type:BlockBlob\nx-ms-date:${dateStr}\nx-ms-version:2020-10-02`;
+            const canonicalizedResource = `/${CONFIG.AZURE_STORAGE_ACCOUNT}/${CONFIG.AZURE_STORAGE_CONTAINER}/${blobName}`;
+            
+            const stringToSign = [
+                method, '', '', contentLength.toString(), '', contentType, '', '', '', '', '', '',
+                canonicalizedHeaders, canonicalizedResource
+            ].join('\n');
+
+            const encoder = new TextEncoder();
+            const keyData = Uint8Array.from(atob(CONFIG.AZURE_STORAGE_KEY), c => c.charCodeAt(0));
+            const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(stringToSign));
+            
+            return btoa(String.fromCharCode(...new Uint8Array(signature)));
+        }
+
+        // Azure Storage - Upload Blob
+        async function uploadToBlob(file) {
+            const blobName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const url = `https://${CONFIG.AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${CONFIG.AZURE_STORAGE_CONTAINER}/${blobName}`;
+            const dateStr = new Date().toUTCString();
+            const contentType = file.type || 'application/octet-stream';
+            
+            const authSignature = await generateAuthHeader('PUT', blobName, dateStr, file.size, contentType);
+            
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'x-ms-blob-type': 'BlockBlob',
+                    'x-ms-date': dateStr,
+                    'x-ms-version': '2020-10-02',
+                    'Content-Type': contentType,
+                    'Content-Length': file.size.toString(),
+                    'Authorization': `SharedKey ${CONFIG.AZURE_STORAGE_ACCOUNT}:${authSignature}`
+                },
+                body: file
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Upload échoué: ${response.status} - ${errorText}`);
+            }
+
+            return url;
+        }
+
+        // Azure Storage - SAS Token
+        async function generateSasUrl(blobUrl) {
+            const now = new Date();
+            const start = new Date(now.getTime() - 5 * 60 * 1000);
+            const expiry = new Date(now.getTime() + 60 * 60 * 1000);
+            
+            const urlObj = new URL(blobUrl);
+            const blobName = decodeURIComponent(urlObj.pathname.split('/').slice(2).join('/'));
+            
+            const permissions = 'r';
+            const startStr = start.toISOString().split('.')[0] + 'Z';
+            const expiryStr = expiry.toISOString().split('.')[0] + 'Z';
+            const version = '2022-11-02';
+            
+            const stringToSign = [
+                permissions, startStr, expiryStr,
+                `/blob/${CONFIG.AZURE_STORAGE_ACCOUNT}/${CONFIG.AZURE_STORAGE_CONTAINER}/${blobName}`,
+                '', '', 'https', version, 'b', '', '', '', '', '', '', ''
+            ].join('\n');
+
+            console.log('String to sign:', stringToSign);
+
+            const encoder = new TextEncoder();
+            const keyData = Uint8Array.from(atob(CONFIG.AZURE_STORAGE_KEY), c => c.charCodeAt(0));
+            const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(stringToSign));
+            const sig = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+            const sasParams = new URLSearchParams({
+                'sp': permissions, 'st': startStr, 'se': expiryStr,
+                'spr': 'https', 'sv': version, 'sr': 'b', 'sig': sig
+            });
+
+            const sasUrl = `${blobUrl}?${sasParams.toString()}`;
+            console.log('Generated SAS URL:', sasUrl);
+            return sasUrl;
+        }
+
+        // Azure Speech - Batch Transcription
+        async function createBatchTranscription(audioUrl) {
+            const response = await fetch(
+                `https://${CONFIG.AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/speechtotext/v3.1/transcriptions`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contentUrls: [audioUrl],
+                        displayName: `Transcription-${Date.now()}`,
+                        locale: 'fr-FR',
+                        properties: {
+                            wordLevelTimestampsEnabled: false,
+                            punctuationMode: 'DictatedAndAutomatic',
+                            profanityFilterMode: 'None'
+                        }
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Création transcription échouée: ${response.status} - ${errorText}`);
+            }
+
+            return await response.json();
+        }
+
+        async function checkTranscriptionStatus(transcriptionUrl) {
+            const response = await fetch(transcriptionUrl, {
+                headers: { 'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY }
+            });
+            if (!response.ok) throw new Error(`Erreur statut: ${response.status}`);
+            return await response.json();
+        }
+
+        async function getTranscriptionResult(transcriptionUrl) {
+            const response = await fetch(`${transcriptionUrl}/files`, {
+                headers: { 'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY }
+            });
+            if (!response.ok) throw new Error(`Erreur fichiers: ${response.status}`);
+
+            const files = await response.json();
+            const transcriptionFile = files.values.find(f => f.kind === 'Transcription');
+            if (!transcriptionFile) throw new Error('Fichier de transcription non trouvé');
+
+            const contentResponse = await fetch(transcriptionFile.links.contentUrl);
+            const content = await contentResponse.json();
+
+            let fullText = '';
+            if (content.combinedRecognizedPhrases) {
+                fullText = content.combinedRecognizedPhrases.map(p => p.display).join('\n');
+            }
+            return fullText;
+        }
+
+        async function deleteTranscription(transcriptionUrl) {
+            try {
+                await fetch(transcriptionUrl, {
+                    method: 'DELETE',
+                    headers: { 'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY }
+                });
+            } catch (e) { console.warn('Cleanup error:', e); }
+        }
+
+        // Process transcription
+        btnTranscribe.addEventListener('click', async function() {
+            if (!currentAudioFile) return;
+
+            progressZone.classList.add('visible');
+            errorZone.classList.remove('visible');
+            btnTranscribe.disabled = true;
+            resetSteps();
+
+            let transcriptionUrl = null;
+
+            try {
+                updateStep(1, 'active');
+                progressTitle.textContent = 'Upload du fichier...';
+                progressBar.style.width = '10%';
+                
+                const blobUrl = await uploadToBlob(currentAudioFile);
+                const sasUrl = await generateSasUrl(blobUrl);
+                
+                updateStep(1, 'completed');
+                progressBar.style.width = '25%';
+
+                updateStep(2, 'active');
+                progressTitle.textContent = 'Création du job...';
+                
+                const transcription = await createBatchTranscription(sasUrl);
+                transcriptionUrl = transcription.self;
+                
+                updateStep(2, 'completed');
+                progressBar.style.width = '35%';
+
+                updateStep(3, 'active');
+                progressTitle.textContent = 'Transcription en cours...';
+                progressBar.classList.add('indeterminate');
+
+                let status = 'Running';
+                let pollCount = 0;
+
+                while (status === 'Running' || status === 'NotStarted') {
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    
+                    const statusResult = await checkTranscriptionStatus(transcriptionUrl);
+                    status = statusResult.status;
+                    pollCount++;
+
+                    const minutes = Math.floor(pollCount * 5 / 60);
+                    const seconds = (pollCount * 5) % 60;
+                    progressStatus.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} écoulées`;
+
+                    if (pollCount >= 360) throw new Error('Timeout (30 min max)');
+                }
+
+                progressBar.classList.remove('indeterminate');
+                if (status === 'Failed') throw new Error('Transcription échouée');
+
+                updateStep(3, 'completed');
+                progressBar.style.width = '80%';
+
+                updateStep(4, 'active');
+                progressTitle.textContent = 'Récupération...';
+
+                const result = await getTranscriptionResult(transcriptionUrl);
+                
+                updateStep(4, 'completed');
+                progressBar.style.width = '100%';
+                progressTitle.textContent = '✅ Transcription terminée !';
+
+                transcriptionText.value = result;
+                checkCanGenerate();
+
+                await deleteTranscription(transcriptionUrl);
+
+            } catch (error) {
+                showError(error.message);
+                progressBar.classList.remove('indeterminate');
+                if (transcriptionUrl) await deleteTranscription(transcriptionUrl);
+            } finally {
+                btnTranscribe.disabled = false;
+            }
+        });
+
+        // Claude API - Génération CR
+        async function callClaudeAPI(transcription) {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': CONFIG.ANTHROPIC_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 4096,
+                    system: CLAUDE_SYSTEM_PROMPT,
+                    messages: [{ role: 'user', content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}` }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `Erreur API (${response.status})`);
+            }
+
+            const data = await response.json();
+            return data.content[0].text;
+        }
+
+        btnGenerate.addEventListener('click', async function() {
             const text = transcriptionText.value.trim();
-            const apiKey = apiKeyInput.value.trim();
+            if (!text) return;
 
-            if (!text || !apiKey) return;
-
-            // UI loading
             loading.classList.add('visible');
             errorZone.classList.remove('visible');
             resultZone.classList.remove('visible');
             btnGenerate.disabled = true;
 
             try {
-                const cr = await callClaudeAPI(apiKey, text);
+                const cr = await callClaudeAPI(text);
                 resultContent.innerHTML = marked.parse(cr);
                 resultZone.classList.add('visible');
             } catch (error) {
@@ -666,74 +484,13 @@
                 loading.classList.remove('visible');
                 checkCanGenerate();
             }
-        }
+        });
 
-        // Appel à Claude API
-        async function callClaudeAPI(apiKey, transcription) {
-            const systemPrompt = `Tu es un assistant spécialisé dans la rédaction de comptes-rendus de réunion professionnels.
-
-À partir de la transcription fournie, génère un compte-rendu structuré avec :
-
-1. **Informations générales** (si identifiables)
-   - Date / Participants / Contexte
-
-2. **Points abordés**
-   - Résumé des sujets discutés, organisés par thème
-
-3. **Décisions prises**
-   - Liste des décisions actées
-
-4. **Actions à mener**
-   - Format : [Responsable] Action - Échéance (si mentionnée)
-
-5. **Notes complémentaires** (si pertinent)
-   - Points en suspens, questions ouvertes
-
-Sois concis mais complet. Utilise un ton professionnel. Si des informations manquent (date, participants...), ne les invente pas.`;
-
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 4096,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}`
-                        }
-                    ],
-                    system: systemPrompt
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) {
-                    throw new Error('Clé API invalide. Vérifiez votre clé Anthropic.');
-                }
-                if (response.status === 429) {
-                    throw new Error('Trop de requêtes. Attendez un moment avant de réessayer.');
-                }
-                throw new Error(errorData.error?.message || `Erreur API (${response.status})`);
-            }
-
-            const data = await response.json();
-            return data.content[0].text;
-        }
-
-        // Afficher une erreur
         function showError(message) {
             errorZone.textContent = '⚠️ ' + message;
             errorZone.classList.add('visible');
         }
 
-        // Copier le résultat
         btnCopy.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultContent.innerText);
@@ -744,20 +501,11 @@ Sois concis mais complet. Utilise un ton professionnel. Si des informations manq
                     btnCopy.classList.remove('copied');
                 }, 2000);
             } catch (err) {
-                showError('Impossible de copier dans le presse-papier.');
+                showError('Impossible de copier.');
             }
         });
 
-        // Clé API pré-remplie depuis config.js
-        apiKeyInput.value = CONFIG.ANTHROPIC_API_KEY;
         checkCanGenerate();
-
-        // Sauvegarder la clé en session (pas localStorage pour la sécurité)
-        apiKeyInput.addEventListener('change', () => {
-            if (apiKeyInput.value) {
-                sessionStorage.setItem('claude_api_key', apiKeyInput.value);
-            }
-        });
     </script>
 </body>
 </html>
