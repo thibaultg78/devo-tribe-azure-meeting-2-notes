@@ -1,0 +1,6 @@
+// Configuration - Copier ce fichier en config.js et remplir les valeurs
+const CONFIG = {
+    ANTHROPIC_API_KEY: 'votre-cle-anthropic',
+    AZURE_SPEECH_KEY: 'votre-cle-azure-speech',
+    AZURE_SPEECH_REGION: 'francecentral'
+};

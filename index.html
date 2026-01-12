@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting → CR</title>
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f7f7;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        /* Zone d'upload */
+        .upload-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #6b7280;
+            background: #f0f0f0;
+        }
+
+        .upload-zone.has-file {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .upload-text strong {
+            color: #374151;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            display: none;
+            font-size: 0.9rem;
+            color: #065f46;
+        }
+
+        .upload-zone.has-file .file-info {
+            display: block;
+        }
+
+        .upload-zone-small {
+            padding: 20px;
+        }
+
+        .upload-zone-small .upload-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        /* Bouton transcrire */
+        .btn-transcribe {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .btn-transcribe:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+        }
+
+        .btn-transcribe:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Zone de texte direct */
+        .or-separator {
+            text-align: center;
+            margin: 20px 0;
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+
+        .text-input-zone {
+            margin-bottom: 20px;
+        }
+
+        .text-input-zone textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        .text-input-zone textarea:focus {
+            outline: none;
+            border-color: #6b7280;
+        }
+
+        .text-input-zone textarea::placeholder {
+            color: #9ca3af;
+        }
+
+        /* Bouton générer */
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn-generate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Zone de résultat */
+        .result-zone {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-zone.visible {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .result-header h2 {
+            font-size: 1.1rem;
+            color: #374151;
+        }
+
+        .btn-copy {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-copy.copied {
+            background: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .result-content {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-content h1, .result-content h2, .result-content h3 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            color: #1f2937;
+        }
+
+        .result-content h1 { font-size: 1.4rem; }
+        .result-content h2 { font-size: 1.2rem; }
+        .result-content h3 { font-size: 1.05rem; }
+
+        .result-content ul, .result-content ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+
+        .result-content li {
+            margin: 0.3em 0;
+        }
+
+        .result-content p {
+            margin: 0.5em 0;
+        }
+
+        .result-content strong {
+            color: #374151;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+
+        .loading.visible {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #6b7280;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #6b7280;
+        }
+
+        /* Erreur */
+        .error-zone {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 15px;
+            color: #dc2626;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-zone.visible {
+            display: block;
+        }
+
+        /* Config API */
+        .api-config {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-config label {
+            display: block;
+            font-size: 0.85rem;
+            color: #92400e;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .api-config input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #fde68a;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .api-config input:focus {
+            outline: none;
+            border-color: #f59e0b;
+        }
+
+        .api-config small {
+            display: block;
+            margin-top: 8px;
+            color: #b45309;
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 15px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+            font-size: 0.8rem;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Meeting → Compte-Rendu</h1>
+            <p>Transformez vos transcriptions en CR structurés</p>
+        </div>
+
+        <div class="content">
+            <!-- Configuration API -->
+            <div class="api-config">
+                <label for="apiKey">🔑 Clé API Claude (Anthropic)</label>
+                <input type="password" id="apiKey" placeholder="sk-ant-api03-..." />
+                <small>La clé reste dans votre navigateur et n'est jamais stockée sur un serveur.</small>
+            </div>
+
+            <!-- Zone d'upload AUDIO -->
+            <div class="upload-zone" id="uploadZoneAudio">
+                <div class="upload-icon">🎙️</div>
+                <div class="upload-text">
+                    <strong>Glissez un fichier audio</strong> (.wav, .mp3, .m4a) ou cliquez pour sélectionner
+                </div>
+                <div class="file-info" id="fileInfoAudio"></div>
+                <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.webm" style="display: none;" />
+            </div>
+
+            <!-- Bouton transcrire -->
+            <button class="btn-transcribe" id="btnTranscribe" disabled>
+                🎙️ Transcrire l'audio (Azure Speech)
+            </button>
+
+            <!-- Loading transcription -->
+            <div class="loading" id="loadingTranscription">
+                <div class="spinner"></div>
+                <div class="loading-text">Azure Speech transcrit l'audio...</div>
+            </div>
+
+            <div class="or-separator">— ou importez une transcription texte —</div>
+
+            <!-- Zone d'upload TEXTE -->
+            <div class="upload-zone upload-zone-small" id="uploadZone">
+                <div class="upload-text">
+                    <strong>📄 Glissez un fichier .txt</strong> ou cliquez
+                </div>
+                <div class="file-info" id="fileInfo"></div>
+                <input type="file" id="fileInput" accept=".txt" style="display: none;" />
+            </div>
+
+            <div class="or-separator">— ou collez directement la transcription —</div>
+
+            <!-- Zone de texte -->
+            <div class="text-input-zone">
+                <textarea id="transcriptionText" placeholder="Collez ici le texte de votre transcription..."></textarea>
+            </div>
+
+            <!-- Bouton générer -->
+            <button class="btn-generate" id="btnGenerate" disabled>
+                🚀 Générer le compte-rendu
+            </button>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">Claude analyse la transcription...</div>
+            </div>
+
+            <!-- Erreur -->
+            <div class="error-zone" id="errorZone"></div>
+
+            <!-- Résultat -->
+            <div class="result-zone" id="resultZone">
+                <div class="result-header">
+                    <h2>✅ Compte-rendu généré</h2>
+                    <button class="btn-copy" id="btnCopy">📋 Copier</button>
+                </div>
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            POC Meeting Transcriber • Propulsé par Claude API
+        </div>
+    </div>
+
+    <script>
+        // Éléments DOM
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadZoneAudio = document.getElementById('uploadZoneAudio');
+        const fileInputAudio = document.getElementById('fileInputAudio');
+        const fileInfoAudio = document.getElementById('fileInfoAudio');
+        const btnTranscribe = document.getElementById('btnTranscribe');
+        const loadingTranscription = document.getElementById('loadingTranscription');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const btnGenerate = document.getElementById('btnGenerate');
+        const apiKeyInput = document.getElementById('apiKey');
+        const loading = document.getElementById('loading');
+        const errorZone = document.getElementById('errorZone');
+        const resultZone = document.getElementById('resultZone');
+        const resultContent = document.getElementById('resultContent');
+        const btnCopy = document.getElementById('btnCopy');
+
+        let currentFileContent = '';
+        let currentAudioFile = null;
+
+        // Config Azure Speech (depuis config.js)
+        const AZURE_SPEECH_KEY = CONFIG.AZURE_SPEECH_KEY;
+        const AZURE_SPEECH_REGION = CONFIG.AZURE_SPEECH_REGION;
+
+        // Gestion de l'upload AUDIO
+        uploadZoneAudio.addEventListener('click', () => fileInputAudio.click());
+        
+        uploadZoneAudio.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZoneAudio.classList.add('dragover');
+        });
+
+        uploadZoneAudio.addEventListener('dragleave', () => {
+            uploadZoneAudio.classList.remove('dragover');
+        });
+
+        uploadZoneAudio.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZoneAudio.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleAudioFile(file);
+        });
+
+        fileInputAudio.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleAudioFile(file);
+        });
+
+        // Traitement du fichier audio
+        function handleAudioFile(file) {
+            const validExtensions = ['.wav', '.mp3', '.m4a', '.ogg', '.webm'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExtensions.includes(ext)) {
+                showError('Format audio non supporté. Utilisez .wav, .mp3, .m4a, .ogg ou .webm');
+                return;
+            }
+
+            currentAudioFile = file;
+            uploadZoneAudio.classList.add('has-file');
+            fileInfoAudio.textContent = `✓ ${file.name} (${formatSize(file.size)})`;
+            btnTranscribe.disabled = false;
+        }
+
+        // Transcrire l'audio via Azure Speech
+        btnTranscribe.addEventListener('click', function() {
+            console.log('Bouton cliqué !');
+            transcribeAudio();
+        });
+
+        async function transcribeAudio() {
+            console.log('transcribeAudio() appelé, fichier:', currentAudioFile);
+            if (!currentAudioFile) {
+                console.log('Pas de fichier audio');
+                return;
+            }
+
+            loadingTranscription.classList.add('visible');
+            errorZone.classList.remove('visible');
+            btnTranscribe.disabled = true;
+
+            try {
+                // Convertir le fichier en ArrayBuffer
+                const audioData = await currentAudioFile.arrayBuffer();
+                
+                // Déterminer le content-type
+                const ext = currentAudioFile.name.split('.').pop().toLowerCase();
+                let contentType = 'audio/wav';
+                if (ext === 'mp3') contentType = 'audio/mpeg';
+                else if (ext === 'm4a') contentType = 'audio/mp4';
+                else if (ext === 'ogg') contentType = 'audio/ogg';
+                else if (ext === 'webm') contentType = 'audio/webm';
+
+                // Appel Azure Speech REST API
+                const response = await fetch(
+                    `https://${AZURE_SPEECH_REGION}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=fr-FR`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
+                            'Content-Type': contentType,
+                            'Accept': 'application/json'
+                        },
+                        body: audioData
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Erreur Azure Speech (${response.status}): ${errorText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.RecognitionStatus === 'Success') {
+                    transcriptionText.value = result.DisplayText;
+                    checkCanGenerate();
+                } else if (result.RecognitionStatus === 'NoMatch') {
+                    throw new Error('Aucune parole détectée dans l\'audio.');
+                } else {
+                    throw new Error(`Échec de la transcription: ${result.RecognitionStatus}`);
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loadingTranscription.classList.remove('visible');
+                btnTranscribe.disabled = false;
+            }
+        }
+
+        // Gestion de l'upload par drag & drop
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Traitement du fichier
+        function handleFile(file) {
+            if (!file.name.endsWith('.txt')) {
+                showError('Seuls les fichiers .txt sont acceptés pour le moment.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentFileContent = e.target.result;
+                transcriptionText.value = currentFileContent;
+                uploadZone.classList.add('has-file');
+                fileInfo.textContent = `✓ ${file.name} (${formatSize(file.size)})`;
+                checkCanGenerate();
+            };
+            reader.readAsText(file);
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' o';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+        }
+
+        // Vérifier si on peut générer
+        function checkCanGenerate() {
+            const hasText = transcriptionText.value.trim().length > 0;
+            const hasApiKey = apiKeyInput.value.trim().length > 0;
+            btnGenerate.disabled = !(hasText && hasApiKey);
+        }
+
+        transcriptionText.addEventListener('input', checkCanGenerate);
+        apiKeyInput.addEventListener('input', checkCanGenerate);
+
+        // Générer le CR
+        btnGenerate.addEventListener('click', generateCR);
+
+        async function generateCR() {
+            const text = transcriptionText.value.trim();
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!text || !apiKey) return;
+
+            // UI loading
+            loading.classList.add('visible');
+            errorZone.classList.remove('visible');
+            resultZone.classList.remove('visible');
+            btnGenerate.disabled = true;
+
+            try {
+                const cr = await callClaudeAPI(apiKey, text);
+                resultContent.innerHTML = marked.parse(cr);
+                resultZone.classList.add('visible');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loading.classList.remove('visible');
+                checkCanGenerate();
+            }
+        }
+
+        // Appel à Claude API
+        async function callClaudeAPI(apiKey, transcription) {
+            const systemPrompt = `Tu es un assistant spécialisé dans la rédaction de comptes-rendus de réunion professionnels.
+
+À partir de la transcription fournie, génère un compte-rendu structuré avec :
+
+1. **Informations générales** (si identifiables)
+   - Date / Participants / Contexte
+
+2. **Points abordés**
+   - Résumé des sujets discutés, organisés par thème
+
+3. **Décisions prises**
+   - Liste des décisions actées
+
+4. **Actions à mener**
+   - Format : [Responsable] Action - Échéance (si mentionnée)
+
+5. **Notes complémentaires** (si pertinent)
+   - Points en suspens, questions ouvertes
+
+Sois concis mais complet. Utilise un ton professionnel. Si des informations manquent (date, participants...), ne les invente pas.`;
+
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 4096,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}`
+                        }
+                    ],
+                    system: systemPrompt
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    throw new Error('Clé API invalide. Vérifiez votre clé Anthropic.');
+                }
+                if (response.status === 429) {
+                    throw new Error('Trop de requêtes. Attendez un moment avant de réessayer.');
+                }
+                throw new Error(errorData.error?.message || `Erreur API (${response.status})`);
+            }
+
+            const data = await response.json();
+            return data.content[0].text;
+        }
+
+        // Afficher une erreur
+        function showError(message) {
+            errorZone.textContent = '⚠️ ' + message;
+            errorZone.classList.add('visible');
+        }
+
+        // Copier le résultat
+        btnCopy.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(resultContent.innerText);
+                btnCopy.textContent = '✓ Copié !';
+                btnCopy.classList.add('copied');
+                setTimeout(() => {
+                    btnCopy.textContent = '📋 Copier';
+                    btnCopy.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                showError('Impossible de copier dans le presse-papier.');
+            }
+        });
+
+        // Clé API pré-remplie depuis config.js
+        apiKeyInput.value = CONFIG.ANTHROPIC_API_KEY;
+        checkCanGenerate();
+
+        // Sauvegarder la clé en session (pas localStorage pour la sécurité)
+        apiKeyInput.addEventListener('change', () => {
+            if (apiKeyInput.value) {
+                sessionStorage.setItem('claude_api_key', apiKeyInput.value);
+            }
+        });
+    </script>
+</body>
+</html>
