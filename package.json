@@ -1,0 +1,11 @@
+{
+  "name": "meeting-transcriber",
+  "version": "1.0.0",
+  "description": "Meeting Transcriber - Tribe Azure",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Devoteam M Cloud - Tribe Azure",
+  "license": "MIT"
+}

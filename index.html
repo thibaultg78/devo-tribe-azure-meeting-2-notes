@@ -76,6 +76,24 @@
                 <textarea id="transcriptionText" placeholder="La transcription apparaîtra ici, ou collez votre propre texte..."></textarea>
             </div>
 
+            <!-- Type de transcription -->
+            <div class="transcription-type">
+                <label for="transcriptionType">📋 Type de transcription :</label>
+                <select id="transcriptionType">
+                    <option value="note">Note personnelle (mode dictaphone)</option>
+                    <option value="telephone">Conversation téléphonique (1:1)</option>
+                    <option value="confcall" selected>Réunion en conf-call ou visio</option>
+                    <option value="salle">Réunion en salle (présentiel)</option>
+                    <option value="conf">Conférence (vous écoutez seulement)</option>
+                </select>
+            </div>
+
+            <!-- Contexte optionnel -->
+            <div class="context-field">
+                <label for="contextInfo">💡 Contexte (optionnel) :</label>
+                <input type="text" id="contextInfo" placeholder="Ex: Point projet migration Azure avec client Toto" />
+            </div>
+
             <!-- Bouton générer -->
             <button class="btn-generate" id="btnGenerate" disabled>
                 🚀 Générer le compte-rendu
@@ -94,7 +112,10 @@
             <div class="result-zone" id="resultZone">
                 <div class="result-header">
                     <h2>✅ Compte-rendu généré</h2>
-                    <button class="btn-copy" id="btnCopy">📋 Copier</button>
+                    <div class="result-actions">
+                        <button class="btn-action btn-email" id="btnEmail">📧 Envoyer par email</button>
+                        <button class="btn-action" id="btnCopy">📋 Copier</button>
+                    </div>
                 </div>
                 <div class="result-content" id="resultContent"></div>
             </div>
@@ -106,6 +127,26 @@
             Azure Speech + Claude API / OpenAI API
             <br />
             Contact : <a href="mailto:thibault.gibard@devoteam.com">thibault.gibard@devoteam.com</a> 📧
+        </div>
+    </div>
+
+    <!-- Modal Email -->
+    <div class="modal-overlay" id="emailModal">
+        <div class="modal">
+            <h3>📧 Envoyer le compte-rendu par email</h3>
+            <div class="modal-field">
+                <label for="emailTo">Adresse email du destinataire</label>
+                <input type="email" id="emailTo" placeholder="prenom.nom@devoteam.com" />
+                <small style="color: #6b7280; font-size: 0.8rem;">Uniquement les adresses @devoteam.com</small>
+            </div>
+            <div class="modal-field">
+                <label for="emailSubject">Sujet</label>
+                <input type="text" id="emailSubject" value="Compte-rendu de réunion" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal btn-modal-cancel" id="btnEmailCancel">Annuler</button>
+                <button class="btn-modal btn-modal-send" id="btnEmailSend">Envoyer</button>
+            </div>
         </div>
     </div>
 
@@ -121,11 +162,19 @@
         const progressBar = document.getElementById('progressBar');
         const transcriptionText = document.getElementById('transcriptionText');
         const btnGenerate = document.getElementById('btnGenerate');
+        const transcriptionType = document.getElementById('transcriptionType');
+        const contextInfo = document.getElementById('contextInfo');
         const loading = document.getElementById('loading');
         const errorZone = document.getElementById('errorZone');
         const resultZone = document.getElementById('resultZone');
         const resultContent = document.getElementById('resultContent');
         const btnCopy = document.getElementById('btnCopy');
+        const btnEmail = document.getElementById('btnEmail');
+        const emailModal = document.getElementById('emailModal');
+        const emailTo = document.getElementById('emailTo');
+        const emailSubject = document.getElementById('emailSubject');
+        const btnEmailCancel = document.getElementById('btnEmailCancel');
+        const btnEmailSend = document.getElementById('btnEmailSend');
 
         let currentAudioFile = null;
 
@@ -444,7 +493,14 @@
         });
 
         // Claude API - Génération CR
-        async function callClaudeAPI(transcription) {
+        async function callClaudeAPI(transcription, promptType, context) {
+            const systemPrompt = PROMPTS[promptType] || PROMPTS['confcall'];
+            let userMessage = `Voici la transcription. Analyse-la et génère le document structuré approprié.\n\n`;
+            if (context) {
+                userMessage += `**Contexte fourni :** ${context}\n\n`;
+            }
+            userMessage += `---\n\n${transcription}`;
+
             const response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
                 headers: {
@@ -456,8 +512,8 @@
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
                     max_tokens: 4096,
-                    system: CLAUDE_SYSTEM_PROMPT,
-                    messages: [{ role: 'user', content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}` }]
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userMessage }]
                 })
             });
 
@@ -471,7 +527,14 @@
         }
 
         // OpenAI API - Génération CR
-        async function callOpenAI(transcription) {
+        async function callOpenAI(transcription, promptType, context) {
+            const systemPrompt = PROMPTS[promptType] || PROMPTS['confcall'];
+            let userMessage = `Voici la transcription. Analyse-la et génère le document structuré approprié.\n\n`;
+            if (context) {
+                userMessage += `**Contexte fourni :** ${context}\n\n`;
+            }
+            userMessage += `---\n\n${transcription}`;
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -482,8 +545,8 @@
                     model: CONFIG.OPENAI_MODEL || 'gpt-4o',
                     max_tokens: 4096,
                     messages: [
-                        { role: 'system', content: CLAUDE_SYSTEM_PROMPT },
-                        { role: 'user', content: `Voici la transcription d'une réunion. Génère le compte-rendu structuré.\n\n---\n\n${transcription}` }
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userMessage }
                     ]
                 })
             });
@@ -498,11 +561,11 @@
         }
 
         // Dispatcher - choisit le provider selon config
-        async function generateCR(transcription) {
+        async function generateCR(transcription, promptType, context) {
             if (CONFIG.LLM_PROVIDER === 'openai') {
-                return await callOpenAI(transcription);
+                return await callOpenAI(transcription, promptType, context);
             } else {
-                return await callClaudeAPI(transcription);
+                return await callClaudeAPI(transcription, promptType, context);
             }
         }
 
@@ -510,13 +573,16 @@
             const text = transcriptionText.value.trim();
             if (!text) return;
 
+            const promptType = transcriptionType.value;
+            const context = contextInfo.value.trim();
+
             loading.classList.add('visible');
             errorZone.classList.remove('visible');
             resultZone.classList.remove('visible');
             btnGenerate.disabled = true;
 
             try {
-                const cr = await generateCR(text);
+                const cr = await generateCR(text, promptType, context);
                 resultContent.innerHTML = marked.parse(cr);
                 resultZone.classList.add('visible');
             } catch (error) {
@@ -532,6 +598,7 @@
             errorZone.classList.add('visible');
         }
 
+        // Bouton Copier
         btnCopy.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultContent.innerText);
@@ -543,6 +610,78 @@
                 }, 2000);
             } catch (err) {
                 showError('Impossible de copier.');
+            }
+        });
+
+        // Bouton Email - ouvre la modal
+        btnEmail.addEventListener('click', () => {
+            emailModal.classList.add('visible');
+            emailTo.value = '';
+            btnEmailSend.disabled = true;
+            emailTo.focus();
+        });
+
+        // Validation email @devoteam.com
+        emailTo.addEventListener('input', () => {
+            const email = emailTo.value.trim().toLowerCase();
+            const isValid = email.endsWith('@devoteam.com') && email.length > '@devoteam.com'.length;
+            btnEmailSend.disabled = !isValid;
+        });
+
+        // Fermer modal
+        btnEmailCancel.addEventListener('click', () => {
+            emailModal.classList.remove('visible');
+        });
+
+        emailModal.addEventListener('click', (e) => {
+            if (e.target === emailModal) {
+                emailModal.classList.remove('visible');
+            }
+        });
+
+        // Envoyer email via backend
+        btnEmailSend.addEventListener('click', async () => {
+            const to = emailTo.value.trim();
+            const subject = emailSubject.value.trim();
+
+            if (!to.toLowerCase().endsWith('@devoteam.com')) {
+                return;
+            }
+
+            btnEmailSend.disabled = true;
+            btnEmailSend.textContent = 'Envoi...';
+
+            try {
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: to,
+                        subject: subject,
+                        htmlContent: resultContent.innerHTML,
+                        textContent: resultContent.innerText
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Erreur envoi email');
+                }
+
+                emailModal.classList.remove('visible');
+                
+                btnEmail.textContent = '✓ Envoyé !';
+                btnEmail.classList.add('copied');
+                setTimeout(() => {
+                    btnEmail.textContent = '📧 Envoyer par email';
+                    btnEmail.classList.remove('copied');
+                }, 2000);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                btnEmailSend.disabled = false;
+                btnEmailSend.textContent = 'Envoyer';
             }
         });
 

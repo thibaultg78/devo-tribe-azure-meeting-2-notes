@@ -3,7 +3,7 @@ Transcription de réunions avec Azure Speech et création d'un C/R avec l'API Cl
 
 # Meeting → CR
 
-POC minimaliste pour transformer des transcriptions de réunions en comptes-rendus structurés via Claude API.
+POC minimaliste pour transformer des transcriptions de réunions en comptes-rendus structurés via Azure Speech & Claude API.
 
 ## 🚀 Lancer en local
 
@@ -29,35 +29,33 @@ docker run -p 8080:80 meeting-cr
 4. Copier la clé (format `sk-ant-api03-...`)
 5. Ajouter du crédit (Pay-as-you-go, minimum ~5$)
 
-**Coût estimé** : ~0.003$ par CR généré (Sonnet, ~2000 tokens)
-
 ## 📁 Structure
 
 ```
-meeting-transcriber/
-├── index.html      # Application complète (HTML + CSS + JS)
-├── Dockerfile      # Pour containerisation
-└── README.md
+devo-tribe-azure-meeting-2-notes/
+├── index.html           # Application web complète (HTML + CSS + JS)
+├── script.js            # Logique JavaScript (API Claude, gestion UI)
+├── style.css            # Styles et thème de l'application
+├── config.js            # Configuration (clé API Claude ou ChatGPT)
+├── config.example.js    # Exemple de template de configuration
+├── prompt.js            # Configuration du prompt à envoyer à Claude
+├── Dockerfile           # Configuration Docker pour déploiement
+├── .dockerignore        # Fichiers à exclure du build Docker
+├── .gitignore           # Fichiers à exclure de Git
+└── README.md            # Documentation du projet
 ```
 
 ## 🔧 Fonctionnement
 
-1. L'utilisateur colle une transcription ou upload un .txt
-2. Le JS appelle directement l'API Claude depuis le navigateur
-3. Claude génère un CR structuré
-4. L'utilisateur peut copier le résultat
+1. L'utilisateur importe un fichier audio d'une réunion qui été enregistrée
+2. Le fichier est stocké dans un Storage Account pour être transcrit en texte avec Azure Speech
+3. La transcription texte est récupérée dans l'application
+4. Le JS appelle directement l'API Claude depuis le navigateur
+5. Claude génère un CR structuré
+6. L'utilisateur peut copier son compte-rendu pour le modifier ou l'envoyer
 
 ## ⚠️ Limitations POC
 
-- Pas de backend (clé API exposée côté client - OK pour usage perso)
-- Pas de persistence des CR
-- Pas d'historique
-- Design neutre (à personnaliser)
-
-## 🔜 Évolutions possibles
-
-- [ ] Intégration Azure Speech pour transcription audio
-- [ ] Backend Node.js pour sécuriser la clé API
-- [ ] Historique des CR (SQLite/PostgreSQL)
-- [ ] Export Word/PDF
-- [ ] Templates de CR personnalisables
+- Pas de backend (clé API exposée côté client - pensé pour usage perso)
+- Les fichiers audio restent sauvegardés dans le Storage Account dans Azure
+- Design Devoteam (Tribe Azure)
