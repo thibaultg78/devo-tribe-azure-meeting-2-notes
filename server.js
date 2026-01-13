@@ -10,7 +10,8 @@ try {
     // Remplacer "const CONFIG" par "CONFIG" pour que l'eval fonctionne
     configContent = configContent.replace('const CONFIG', 'CONFIG');
     eval(configContent);
-    console.log('✅ Config chargée, BREVO_API_KEY:', CONFIG.BREVO_API_KEY ? 'présente' : 'MANQUANTE');
+    // Debug supprimé
+    //console.log('✅ Config chargée, BREVO_API_KEY:', CONFIG.BREVO_API_KEY ? 'présente' : 'MANQUANTE');
 } catch (e) {
     console.error('❌ Erreur chargement config.js:', e.message);
 }
