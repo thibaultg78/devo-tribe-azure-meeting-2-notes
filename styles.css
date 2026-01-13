@@ -58,6 +58,15 @@ body {
     padding: 30px;
 }
 
+/* Conseil d'enregistrement */
+.recording-tip {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
 /* Cacher le formulaire quand soumis */
 .content.submitted .upload-zone,
 .content.submitted .options-section,
