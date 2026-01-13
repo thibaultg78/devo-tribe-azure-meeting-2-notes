@@ -1,11 +1,9 @@
 {
-  "name": "meeting-transcriber",
-  "version": "1.0.0",
-  "description": "Meeting Transcriber - Tribe Azure",
+  "name": "meeting-transcriber-v2",
+  "version": "2.0.0",
+  "description": "Meeting Transcriber - Async version",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
-  },
-  "author": "Devoteam M Cloud - Tribe Azure",
-  "license": "MIT"
+  }
 }
