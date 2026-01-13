@@ -3,18 +3,39 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Charger config.js
+// Charger config depuis variables d'environnement (Azure) ou config.js (local)
 let CONFIG = {};
-try {
-    let configContent = fs.readFileSync(path.join('/app', 'config.js'), 'utf8');
-    // Remplacer "const CONFIG" par "CONFIG" pour que l'eval fonctionne
-    configContent = configContent.replace('const CONFIG', 'CONFIG');
-    eval(configContent);
-    // Debug supprimé
-    //console.log('✅ Config chargée, BREVO_API_KEY:', CONFIG.BREVO_API_KEY ? 'présente' : 'MANQUANTE');
-} catch (e) {
-    console.error('❌ Erreur chargement config.js:', e.message);
+
+// Variables d'environnement Azure (prioritaires)
+if (process.env.BREVO_API_KEY) {
+    CONFIG = {
+        LLM_PROVIDER: process.env.LLM_PROVIDER || 'claude',
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o',
+        AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY || '',
+        AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION || 'francecentral',
+        AZURE_STORAGE_ACCOUNT: process.env.AZURE_STORAGE_ACCOUNT || '',
+        AZURE_STORAGE_KEY: process.env.AZURE_STORAGE_KEY || '',
+        AZURE_STORAGE_CONTAINER: process.env.AZURE_STORAGE_CONTAINER || 'audio-uploads',
+        BREVO_API_KEY: process.env.BREVO_API_KEY || '',
+        EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@devomcloud.fr',
+        EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Meeting Transcriber'
+    };
+    console.log('✅ Config chargée depuis variables d\'environnement');
+} else {
+    // Fallback config.js pour dev local
+    try {
+        let configContent = fs.readFileSync(path.join('/app', 'config.js'), 'utf8');
+        configContent = configContent.replace('const CONFIG', 'CONFIG');
+        eval(configContent);
+        console.log('✅ Config chargée depuis config.js');
+    } catch (e) {
+        console.error('❌ Erreur chargement config:', e.message);
+    }
 }
+
+console.log('BREVO_API_KEY:', CONFIG.BREVO_API_KEY ? 'présente' : 'MANQUANTE');
 
 const PORT = process.env.PORT || 8080;
 
@@ -38,6 +59,23 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
+        return;
+    }
+
+    // API endpoint pour la config frontend
+    if (req.method === 'GET' && req.url === '/api/config') {
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end(`const CONFIG = {
+            LLM_PROVIDER: '${CONFIG.LLM_PROVIDER || 'claude'}',
+            ANTHROPIC_API_KEY: '${CONFIG.ANTHROPIC_API_KEY || ''}',
+            OPENAI_API_KEY: '${CONFIG.OPENAI_API_KEY || ''}',
+            OPENAI_MODEL: '${CONFIG.OPENAI_MODEL || 'gpt-4o'}',
+            AZURE_SPEECH_KEY: '${CONFIG.AZURE_SPEECH_KEY || ''}',
+            AZURE_SPEECH_REGION: '${CONFIG.AZURE_SPEECH_REGION || 'francecentral'}',
+            AZURE_STORAGE_ACCOUNT: '${CONFIG.AZURE_STORAGE_ACCOUNT || ''}',
+            AZURE_STORAGE_KEY: '${CONFIG.AZURE_STORAGE_KEY || ''}',
+            AZURE_STORAGE_CONTAINER: '${CONFIG.AZURE_STORAGE_CONTAINER || 'audio-uploads'}'
+        };`);
         return;
     }
 
