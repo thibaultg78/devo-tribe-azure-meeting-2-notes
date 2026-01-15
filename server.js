@@ -34,8 +34,9 @@ if (process.env.BREVO_API_KEY) {
         AZURE_STORAGE_KEY: process.env.AZURE_STORAGE_KEY || '',         // Clé d'accès du stockage
         AZURE_STORAGE_CONTAINER: process.env.AZURE_STORAGE_CONTAINER || 'audio-uploads',
         BREVO_API_KEY: process.env.BREVO_API_KEY || '',                 // Clé API Brevo (email)
-        EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@devomcloud.fr',
-        EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Tribe Azure - Meeting Transcriber '
+        EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@devomcloud.fr',  // Adresse email de l'expéditeur
+        EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Tribe Azure - Meeting Transcriber ', // Objet de l'email
+        SHORTCUT_API_KEY: process.env.SHORTCUT_API_KEY || ''            // Clé API Shortcut (optionnel)
     };
     console.log('✅ Config chargée depuis variables d\'environnement');
 } else {
@@ -100,25 +101,25 @@ const mimeTypes = {
 function parseMultipart(buffer, boundary) {
     const parts = {};
     const boundaryBuffer = Buffer.from('--' + boundary);
-    
+
     // Position du début du premier bloc de données
     let start = buffer.indexOf(boundaryBuffer) + boundaryBuffer.length + 2;
-    
+
     // Boucle sur chaque partie du multipart
     while (start < buffer.length) {
         const end = buffer.indexOf(boundaryBuffer, start);
         if (end === -1) break;
-        
+
         // Extraction de la partie (headers + contenu)
         const part = buffer.slice(start, end - 2);
         const headerEnd = part.indexOf('\r\n\r\n');
         const header = part.slice(0, headerEnd).toString();
         const content = part.slice(headerEnd + 4);
-        
+
         // Extraction du nom du champ et éventuellement du nom de fichier
         const nameMatch = header.match(/name="([^"]+)"/);
         const filenameMatch = header.match(/filename="([^"]+)"/);
-        
+
         if (nameMatch) {
             const name = nameMatch[1];
             if (filenameMatch) {
@@ -132,10 +133,10 @@ function parseMultipart(buffer, boundary) {
                 parts[name] = content.toString();
             }
         }
-        
+
         start = end + boundaryBuffer.length + 2;
     }
-    
+
     return parts;
 }
 
@@ -155,13 +156,13 @@ function generateSasUrl(blobName) {
     const account = CONFIG.AZURE_STORAGE_ACCOUNT;
     const key = CONFIG.AZURE_STORAGE_KEY;
     const container = CONFIG.AZURE_STORAGE_CONTAINER;
-    
+
     // Définir la période de validité du token (1 heure)
     const now = new Date();
     const expiry = new Date(now.getTime() + 60 * 60 * 1000);
-    
+
     const formatDate = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
-    
+
     // Paramètres du token SAS
     const permissions = 'rcw'; // read, create, write
     const startStr = formatDate(now);
@@ -169,7 +170,7 @@ function generateSasUrl(blobName) {
     const version = '2020-02-10';
     const resource = 'b'; // blob
     const protocol = 'https';
-    
+
     // Construction de la chaîne à signer (ordre strict requis par Azure)
     const stringToSign = [
         permissions,
@@ -188,12 +189,12 @@ function generateSasUrl(blobName) {
         '', // rscl (Content-Language)
         ''  // rsct (Content-Type)
     ].join('\n');
-    
+
     // Signature HMAC-SHA256 avec la clé du compte de stockage
     const signature = crypto.createHmac('sha256', Buffer.from(key, 'base64'))
         .update(stringToSign, 'utf8')
         .digest('base64');
-    
+
     // Construction du token SAS complet
     const sasToken = [
         `sv=${version}`,
@@ -204,7 +205,7 @@ function generateSasUrl(blobName) {
         `spr=${protocol}`,
         `sig=${encodeURIComponent(signature)}`
     ].join('&');
-    
+
     return `https://${account}.blob.core.windows.net/${container}/${blobName}?${sasToken}`;
 }
 
@@ -224,7 +225,7 @@ function generateSasUrl(blobName) {
 
 async function uploadToAzure(blobName, data, contentType) {
     const url = generateSasUrl(blobName);
-    
+
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
         const options = {
@@ -237,7 +238,7 @@ async function uploadToAzure(blobName, data, contentType) {
                 'x-ms-blob-type': 'BlockBlob' // Type de blob standard Azure
             }
         };
-        
+
         const req = https.request(options, (res) => {
             if (res.statusCode === 201) {
                 // Upload réussi : retourner l'URL avec SAS
@@ -249,7 +250,7 @@ async function uploadToAzure(blobName, data, contentType) {
                 res.on('end', () => reject(new Error(`Upload failed: ${res.statusCode} - ${body}`)));
             }
         });
-        
+
         req.on('error', reject);
         req.write(data);
         req.end();
@@ -270,7 +271,7 @@ async function uploadToAzure(blobName, data, contentType) {
 
 async function createTranscriptionJob(audioUrl) {
     const endpoint = `https://${CONFIG.AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/speechtotext/v3.2/transcriptions`;
-    
+
     // Configuration du job de transcription
     const body = JSON.stringify({
         contentUrls: [audioUrl], // URL(s) des fichiers audio à transcrire
@@ -282,7 +283,7 @@ async function createTranscriptionJob(audioUrl) {
             profanityFilterMode: 'None'               // Pas de filtre de gros mots
         }
     });
-    
+
     return new Promise((resolve, reject) => {
         const urlObj = new URL(endpoint);
         const options = {
@@ -295,7 +296,7 @@ async function createTranscriptionJob(audioUrl) {
                 'Content-Length': Buffer.byteLength(body)
             }
         };
-        
+
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
@@ -308,7 +309,7 @@ async function createTranscriptionJob(audioUrl) {
                 }
             });
         });
-        
+
         req.on('error', reject);
         req.write(body);
         req.end();
@@ -339,14 +340,14 @@ async function pollTranscription(selfUrl) {
                     'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY
                 }
             };
-            
+
             const req = https.request(options, (res) => {
                 let data = '';
                 res.on('data', chunk => data += chunk);
                 res.on('end', () => {
                     const result = JSON.parse(data);
                     console.log('📊 Status transcription:', result.status);
-                    
+
                     if (result.status === 'Succeeded') {
                         // Transcription terminée avec succès
                         resolve(result);
@@ -360,11 +361,11 @@ async function pollTranscription(selfUrl) {
                     }
                 });
             });
-            
+
             req.on('error', reject);
             req.end();
         };
-        
+
         poll(); // Lancer le premier poll immédiatement
     });
 }
@@ -392,7 +393,7 @@ async function getTranscriptionResult(filesUrl) {
                 'Ocp-Apim-Subscription-Key': CONFIG.AZURE_SPEECH_KEY
             }
         };
-        
+
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
@@ -400,7 +401,7 @@ async function getTranscriptionResult(filesUrl) {
                 const files = JSON.parse(data);
                 // Chercher le fichier de type "Transcription" (vs "Report")
                 const transcriptionFile = files.values.find(f => f.kind === 'Transcription');
-                
+
                 if (transcriptionFile) {
                     // Télécharger le contenu du fichier de transcription
                     https.get(transcriptionFile.links.contentUrl, (res2) => {
@@ -420,7 +421,7 @@ async function getTranscriptionResult(filesUrl) {
                 }
             });
         });
-        
+
         req.on('error', reject);
         req.end();
     });
@@ -443,14 +444,14 @@ async function getTranscriptionResult(filesUrl) {
 async function callClaude(transcription, promptType, context) {
     // Sélectionner le prompt système approprié
     const systemPrompt = PROMPTS[promptType] || PROMPTS['confcall'];
-    
+
     // Construction du message utilisateur
     let userMessage = `Voici la transcription. Analyse-la et génère le document structuré approprié.\n\n`;
     if (context) {
         userMessage += `**Contexte fourni :** ${context}\n\n`;
     }
     userMessage += `---\n\n${transcription}`;
-    
+
     // Payload de la requête API
     const body = JSON.stringify({
         model: 'claude-sonnet-4-20250514', // Modèle Claude Sonnet 4 (dernière version)
@@ -458,7 +459,7 @@ async function callClaude(transcription, promptType, context) {
         system: systemPrompt,               // Instructions système
         messages: [{ role: 'user', content: userMessage }]
     });
-    
+
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'api.anthropic.com',
@@ -471,7 +472,7 @@ async function callClaude(transcription, promptType, context) {
                 'Content-Length': Buffer.byteLength(body)
             }
         };
-        
+
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
@@ -485,7 +486,7 @@ async function callClaude(transcription, promptType, context) {
                 }
             });
         });
-        
+
         req.on('error', reject);
         req.write(body);
         req.end();
@@ -512,7 +513,7 @@ async function sendEmail(to, subject, htmlContent) {
         subject: subject,
         htmlContent: htmlContent
     });
-    
+
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'api.brevo.com',
@@ -524,7 +525,7 @@ async function sendEmail(to, subject, htmlContent) {
                 'Content-Length': Buffer.byteLength(body)
             }
         };
-        
+
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
@@ -537,7 +538,7 @@ async function sendEmail(to, subject, htmlContent) {
                 }
             });
         });
-        
+
         req.on('error', reject);
         req.write(body);
         req.end();
@@ -598,40 +599,40 @@ function markdownToHtml(markdown) {
 
 async function processAudio(audioData, filename, type, context, email, subject) {
     console.log(`🚀 Démarrage traitement: ${filename} pour ${email}`);
-    
+
     try {
         // --- ÉTAPE 1 : UPLOAD VERS AZURE BLOB ---
         const blobName = `${Date.now()}-${filename}`;
         // Déterminer le type MIME selon l'extension du fichier
-        const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' : 
-                           filename.endsWith('.m4a') ? 'audio/mp4' : 
-                           filename.endsWith('.wav') ? 'audio/wav' : 'audio/ogg';
-        
+        const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' :
+            filename.endsWith('.m4a') ? 'audio/mp4' :
+                filename.endsWith('.wav') ? 'audio/wav' : 'audio/ogg';
+
         console.log('📤 Upload vers Azure Blob...');
         const audioUrl = await uploadToAzure(blobName, audioData, contentType);
         console.log('✅ Upload terminé');
         console.log('🔗 URL audio:', audioUrl);
-        
+
         // --- ÉTAPE 2 : CRÉATION JOB DE TRANSCRIPTION ---
         console.log('🎙️ Création job de transcription...');
         const job = await createTranscriptionJob(audioUrl);
         console.log('✅ Job créé:', job.self);
-        
+
         // --- ÉTAPE 3 : ATTENTE DE LA TRANSCRIPTION ---
         console.log('⏳ Attente transcription...');
         const completed = await pollTranscription(job.self);
         console.log('✅ Transcription terminée');
-        
+
         // --- ÉTAPE 4 : RÉCUPÉRATION DU TEXTE ---
         console.log('📝 Récupération du texte...');
         const transcription = await getTranscriptionResult(completed.links.files);
         console.log(`✅ Texte récupéré (${transcription.length} caractères)`);
-        
+
         // --- ÉTAPE 5 : GÉNÉRATION DU COMPTE-RENDU AVEC CLAUDE ---
         console.log('🤖 Génération du compte-rendu avec Claude...');
         const cr = await callClaude(transcription, type, context);
         console.log('✅ Compte-rendu généré');
-        
+
         // --- ÉTAPE 6 : ENVOI DE L'EMAIL ---
         console.log('📧 Envoi de l\'email...');
         // Construction du template HTML de l'email
@@ -648,10 +649,10 @@ async function processAudio(audioData, filename, type, context, email, subject) 
                 </div>
             </div>
         `;
-        
+
         await sendEmail(email, subject, htmlContent);
         console.log(`✅ Email envoyé à ${email}`);
-        
+
     } catch (error) {
         // --- GESTION DES ERREURS ---
         console.error('❌ Erreur traitement:', error.message);
@@ -694,30 +695,81 @@ const server = http.createServer(async (req, res) => {
 
     // --- ENDPOINT API : /api/process ---
     // Point d'entrée pour le traitement audio asynchrone
-    if (req.method === 'POST' && req.url === '/api/process') {
+
+    // API endpoint pour Apple Shortcuts (auth par clé API)
+    if (req.method === 'POST' && req.url === '/api/shortcut') {
+        // Vérifier la clé API
+        const apiKey = req.headers['x-api-key'];
+        if (!CONFIG.SHORTCUT_API_KEY || apiKey !== CONFIG.SHORTCUT_API_KEY) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized' }));
+            return;
+        }
+
+        // Même logique que /api/process
         const contentType = req.headers['content-type'] || '';
         const boundary = contentType.split('boundary=')[1];
-        
+
         if (!boundary) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Missing boundary' }));
             return;
         }
-        
+
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            const parts = parseMultipart(buffer, boundary);
+
+            if (!parts.audio || !parts.email) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Missing audio or email' }));
+                return;
+            }
+
+            // Lancer le traitement en arrière-plan
+            processAudio(
+                parts.audio.data,
+                parts.audio.filename,
+                parts.type || 'confcall',
+                parts.context || '',
+                parts.email,
+                parts.subject || 'Compte-rendu de réunion'
+            );
+
+            // Répondre immédiatement
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Traitement lancé' }));
+        });
+
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/process') {
+        const contentType = req.headers['content-type'] || '';
+        const boundary = contentType.split('boundary=')[1];
+
+        if (!boundary) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Missing boundary' }));
+            return;
+        }
+
         // Réception des données multipart
         const chunks = [];
         req.on('data', chunk => chunks.push(chunk));
         req.on('end', () => {
             const buffer = Buffer.concat(chunks);
             const parts = parseMultipart(buffer, boundary);
-            
+
             // Validation des champs obligatoires
             if (!parts.audio || !parts.email) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Missing audio or email' }));
                 return;
             }
-            
+
             // Lancer le traitement en arrière-plan (non bloquant)
             processAudio(
                 parts.audio.data,
@@ -727,12 +779,12 @@ const server = http.createServer(async (req, res) => {
                 parts.email,
                 parts.subject || 'Compte-rendu de réunion'
             );
-            
+
             // Répondre immédiatement au client (ne pas attendre la fin du traitement)
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, message: 'Traitement lancé' }));
         });
-        
+
         return;
     }
 
@@ -740,7 +792,7 @@ const server = http.createServer(async (req, res) => {
     // Sert les fichiers HTML, CSS, JS, images, etc.
     let filePath = req.url === '/' ? 'index.html' : req.url.substring(1);
     filePath = path.join('/app', filePath);
-    
+
     const ext = path.extname(filePath);
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 

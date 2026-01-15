@@ -159,6 +159,7 @@ const PROMPTS = {
         - Reste factuel : base-toi uniquement sur ce qui a été dit
         - Garde les termes techniques en anglais (cloud, consulting, etc.) - pas de traduction inutile ou stupide
         - Sois concis mais précis dans chaque section
+        - Enfin le compte-rendu doit être exhaustif donc si certaines informations ne rentrent pas dans une catégorie précise, tu le mets dans **Autres Informations**.
         - N'invente pas d'informations`
 };
 
