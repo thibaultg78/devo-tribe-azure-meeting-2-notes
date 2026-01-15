@@ -1,30 +1,34 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting Transcriber - Tribe Azure</title>
-    <link rel="icon" type="image/png" href="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png">
+    <title>Meeting Transcriber - Squad Azure</title>
+    <link rel="icon" type="image/png"
+        href="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <div class="header-content">
-                <img src="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png" 
-                     alt="Devoteam" class="header-logo">
+                <img src="https://creativetech-fr.devoteam.com/wp-content/uploads/2021/11/cropped-favicon_dvt_ct.png"
+                    alt="Devoteam" class="header-logo">
                 <div class="header-text">
-                    <h1>Tribe Azure ☁️ - Meeting Transcriber 📝</h1>
+                    <h1>Squad Azure ☁️ - Meeting Transcriber 📝</h1>
                     <p>Transformez vos réunions en comptes-rendus structurés</p>
                 </div>
             </div>
         </div>
 
         <div class="content">
-            
+
             <!-- Conseil d'enregistrement -->
-            <p class="recording-tip">💡 Astuce : Enregistrez avec le dictaphone de votre smartphone ou l'app Enregistreur vocal de Windows</p>
-            
+            <p class="recording-tip">💡 Astuce : Enregistrez avec le dictaphone de votre smartphone ou l'app
+                Enregistreur vocal de Windows</p>
+
             <!-- Zone d'upload AUDIO -->
             <div class="upload-zone" id="uploadZoneAudio">
                 <div class="upload-icon">🎙️</div>
@@ -35,7 +39,8 @@
                     Formats supportés : .m4a, .mp3, .wav, .ogg, .flac
                 </div>
                 <div class="file-info" id="fileInfoAudio"></div>
-                <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.flac,.webm" style="display: none;" />
+                <input type="file" id="fileInputAudio" accept=".wav,.mp3,.m4a,.ogg,.flac,.webm"
+                    style="display: none;" />
             </div>
 
             <!-- Options -->
@@ -56,7 +61,8 @@
                 <!-- Contexte optionnel -->
                 <div class="form-field">
                     <label for="contextInfo">💡 Contexte (optionnel) :</label>
-                    <input type="text" id="contextInfo" placeholder="Ex: Point projet migration Azure avec client Toto" />
+                    <input type="text" id="contextInfo"
+                        placeholder="Ex: Point projet migration Azure avec client Toto" />
                 </div>
 
                 <!-- Email destinataire -->
@@ -92,7 +98,7 @@
         </div>
 
         <div class="footer">
-            Devoteam M Cloud - Tribe Azure - Meeting Transcriber 🤖
+            Devoteam M Cloud - Squad Azure - Meeting Transcriber 🤖
             <br />
             Azure Speech + Claude API - Version 1.2 - Janvier 2025
             <br />
@@ -119,7 +125,7 @@
 
         // Gestion de l'upload AUDIO
         uploadZoneAudio.addEventListener('click', () => fileInputAudio.click());
-        
+
         uploadZoneAudio.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZoneAudio.classList.add('dragover');
@@ -144,7 +150,7 @@
         function handleAudioFile(file) {
             const validExtensions = ['.wav', '.mp3', '.m4a', '.ogg', '.flac', '.webm'];
             const ext = '.' + file.name.split('.').pop().toLowerCase();
-            
+
             if (!validExtensions.includes(ext)) {
                 showError('Format audio non supporté.');
                 return;
@@ -152,10 +158,10 @@
 
             currentAudioFile = file;
             uploadZoneAudio.classList.add('has-file');
-            
+
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
             fileInfoAudio.textContent = `✓ ${file.name} (${fileSizeMB} Mo)`;
-            
+
             checkCanSubmit();
         }
 
@@ -166,7 +172,7 @@
             const hasFile = currentAudioFile !== null;
             const email = emailTo.value.trim().toLowerCase();
             const isValidEmail = email.endsWith('@devoteam.com') && email.length > '@devoteam.com'.length;
-            
+
             btnSubmit.disabled = !(hasFile && isValidEmail);
         }
 
@@ -239,4 +245,5 @@
         checkCanSubmit();
     </script>
 </body>
+
 </html>
