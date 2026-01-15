@@ -36,7 +36,6 @@ if (process.env.BREVO_API_KEY) {
         BREVO_API_KEY: process.env.BREVO_API_KEY || '',                 // Clé API Brevo (email)
         EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@devomcloud.fr',  // Adresse email de l'expéditeur
         EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Tribe Azure - Meeting Transcriber ', // Objet de l'email
-        SHORTCUT_API_KEY: process.env.SHORTCUT_API_KEY || ''            // Clé API Shortcut (optionnel)
     };
     console.log('✅ Config chargée depuis variables d\'environnement');
 } else {
@@ -695,57 +694,6 @@ const server = http.createServer(async (req, res) => {
 
     // --- ENDPOINT API : /api/process ---
     // Point d'entrée pour le traitement audio asynchrone
-
-    // API endpoint pour Apple Shortcuts (auth par clé API)
-    if (req.method === 'POST' && req.url === '/api/shortcut') {
-        // Vérifier la clé API
-        const apiKey = req.headers['x-api-key'];
-        if (!CONFIG.SHORTCUT_API_KEY || apiKey !== CONFIG.SHORTCUT_API_KEY) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized' }));
-            return;
-        }
-
-        // Même logique que /api/process
-        const contentType = req.headers['content-type'] || '';
-        const boundary = contentType.split('boundary=')[1];
-
-        if (!boundary) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Missing boundary' }));
-            return;
-        }
-
-        const chunks = [];
-        req.on('data', chunk => chunks.push(chunk));
-        req.on('end', () => {
-            const buffer = Buffer.concat(chunks);
-            const parts = parseMultipart(buffer, boundary);
-
-            if (!parts.audio || !parts.email) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Missing audio or email' }));
-                return;
-            }
-
-            // Lancer le traitement en arrière-plan
-            processAudio(
-                parts.audio.data,
-                parts.audio.filename,
-                parts.type || 'confcall',
-                parts.context || '',
-                parts.email,
-                parts.subject || 'Compte-rendu de réunion'
-            );
-
-            // Répondre immédiatement
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, message: 'Traitement lancé' }));
-        });
-
-        return;
-    }
-
     if (req.method === 'POST' && req.url === '/api/process') {
         const contentType = req.headers['content-type'] || '';
         const boundary = contentType.split('boundary=')[1];
