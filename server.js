@@ -637,8 +637,8 @@ async function processAudio(audioData, filename, type, context, email, subject) 
         // Construction du template HTML de l'email
         const htmlContent = `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
-                    <h1 style="margin:0; font-size: 1.3rem;">☁️ Tribe Azure - Meeting Transcriber 📝</h1>
+                <div style="background: linear-gradient(135deg, #E5007D 0%, #FF6B6B 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin:0; font-size: 1.3rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">☁️ Tribe Azure - Meeting Transcriber 📝</h1>
                 </div>
                 <div style="padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none;">
                     ${markdownToHtml(cr)}
