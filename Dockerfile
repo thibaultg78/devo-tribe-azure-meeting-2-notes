@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Installer FFmpeg pour la conversion audio
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 COPY package.json ./

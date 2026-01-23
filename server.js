@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 
 // =============================================================================
 // SECTION 1 : CHARGEMENT DE LA CONFIGURATION
@@ -254,6 +255,50 @@ async function uploadToAzure(blobName, data, contentType) {
         req.write(data);
         req.end();
     });
+}
+
+// =============================================================================
+// SECTION 6b : HELPER - CONVERSION AUDIO M4A → WAV (via FFmpeg)
+// =============================================================================
+/**
+ * Convertit un fichier audio M4A en WAV pour compatibilité Azure Speech
+ * Utilise FFmpeg installé dans le container
+ * 
+ * @param {Buffer} inputData - Données binaires du fichier M4A
+ * @param {string} originalFilename - Nom du fichier original
+ * @returns {Promise<{data: Buffer, filename: string}>} Fichier WAV converti
+ */
+// =============================================================================
+
+const { execSync } = require('child_process');
+
+async function convertToWav(inputData, originalFilename) {
+    const tempId = Date.now();
+    const inputPath = `/tmp/${tempId}-input.m4a`;
+    const outputPath = `/tmp/${tempId}-output.wav`;
+
+    try {
+        // Écrire le fichier M4A temporaire
+        fs.writeFileSync(inputPath, inputData);
+
+        // Conversion FFmpeg : mono, 16kHz (optimal pour Azure Speech)
+        execSync(`ffmpeg -i "${inputPath}" -ar 16000 -ac 1 -y "${outputPath}"`, {
+            stdio: 'pipe'
+        });
+
+        // Lire le fichier WAV converti
+        const wavData = fs.readFileSync(outputPath);
+        const newFilename = originalFilename.replace(/\.m4a$/i, '.wav');
+
+        console.log(`✅ Conversion M4A → WAV réussie (${(wavData.length / 1024 / 1024).toFixed(1)} Mo)`);
+
+        return { data: wavData, filename: newFilename };
+
+    } finally {
+        // Nettoyage des fichiers temporaires
+        try { fs.unlinkSync(inputPath); } catch (e) { }
+        try { fs.unlinkSync(outputPath); } catch (e) { }
+    }
 }
 
 // =============================================================================
@@ -578,6 +623,7 @@ function markdownToHtml(markdown) {
  * Appelée de manière asynchrone (non-bloquante) depuis le endpoint /api/process
  * 
  * Étapes :
+ * 0. Conversion M4A → WAV si nécessaire (FFmpeg)
  * 1. Upload du fichier audio vers Azure Blob Storage
  * 2. Création d'un job de transcription Azure Speech
  * 3. Polling du statut jusqu'à complétion
@@ -600,15 +646,25 @@ async function processAudio(audioData, filename, type, context, email, subject) 
     console.log(`🚀 Démarrage traitement: ${filename} pour ${email}`);
 
     try {
+        // --- ÉTAPE 0 : CONVERSION M4A → WAV SI NÉCESSAIRE ---
+        let finalAudioData = audioData;
+        let finalFilename = filename;
+
+        if (filename.toLowerCase().endsWith('.m4a')) {
+            console.log('🔄 Conversion M4A → WAV en cours...');
+            const converted = await convertToWav(audioData, filename);
+            finalAudioData = converted.data;
+            finalFilename = converted.filename;
+        }
+
         // --- ÉTAPE 1 : UPLOAD VERS AZURE BLOB ---
-        const blobName = `${Date.now()}-${filename}`;
+        const blobName = `${Date.now()}-${finalFilename}`;
         // Déterminer le type MIME selon l'extension du fichier
-        const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' :
-            filename.endsWith('.m4a') ? 'audio/mp4' :
-                filename.endsWith('.wav') ? 'audio/wav' : 'audio/ogg';
+        const contentType = finalFilename.endsWith('.mp3') ? 'audio/mpeg' :
+            finalFilename.endsWith('.wav') ? 'audio/wav' : 'audio/ogg';
 
         console.log('📤 Upload vers Azure Blob...');
-        const audioUrl = await uploadToAzure(blobName, audioData, contentType);
+        const audioUrl = await uploadToAzure(blobName, finalAudioData, contentType);
         console.log('✅ Upload terminé');
         console.log('🔗 URL audio:', audioUrl);
 
