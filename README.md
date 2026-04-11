@@ -2,6 +2,10 @@
 
 Transformez vos réunions audio en comptes-rendus structurés grâce à Azure Speech et Claude API.
 
+## 📸 Aperçu
+
+![Aperçu Meeting Transcriber](/screenshots/screenshot-3.png)
+
 ## 🎯 Fonctionnalités
 
 - **Transcription automatique** : Upload audio → Transcription Azure Speech
